@@ -7,7 +7,7 @@
 + (CGFloat) colorComponentFrom: (NSString *) string start: (NSUInteger) start length: (NSUInteger) length;
 @end
 
-@implementation FlutterWebBrowserPlugin 
+@implementation FlutterWebBrowserPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
   FlutterMethodChannel* channel = [FlutterMethodChannel
       methodChannelWithName:@"flutter_web_browser"
@@ -16,14 +16,33 @@
   [registrar addMethodCallDelegate:instance channel:channel];
 }
 
+- (UIViewController *)topViewController {
+  return [self topViewControllerFromViewController:[UIApplication sharedApplication]
+                                                       .keyWindow.rootViewController];
+}
 
+- (UIViewController *)topViewControllerFromViewController:(UIViewController *)viewController {
+  if ([viewController isKindOfClass:[UINavigationController class]]) {
+    UINavigationController *navigationController = (UINavigationController *)viewController;
+    return [self
+        topViewControllerFromViewController:[navigationController.viewControllers lastObject]];
+  }
+  if ([viewController isKindOfClass:[UITabBarController class]]) {
+    UITabBarController *tabController = (UITabBarController *)viewController;
+    return [self topViewControllerFromViewController:tabController.selectedViewController];
+  }
+  if (viewController.presentedViewController) {
+    return [self topViewControllerFromViewController:viewController.presentedViewController];
+  }
+  return viewController;
+}
 
 - (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if ([@"openWebPage" isEqualToString:call.method]) {
         NSString *url = call.arguments[@"url"];
         NSString *controlColorArg = call.arguments[@"ios_control_color"];
         NSURL *URL = [NSURL URLWithString:url];
-        UIViewController *viewController = [[[[UIApplication sharedApplication] delegate] window] rootViewController];
+        UIViewController *viewController = [self topViewController];
         if (viewController.presentedViewController && !viewController.presentedViewController.isBeingDismissed ) {
             viewController = viewController.presentedViewController;
         }
@@ -123,5 +142,6 @@
     [[NSScanner scannerWithString: fullHex] scanHexInt: &hexComponent];
     return hexComponent / 255.0;
 }
+
 
 @end
